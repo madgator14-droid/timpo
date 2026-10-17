@@ -1,0 +1,931 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timpo's Enhanced Combat Assistant</title>
+  <style>
+    :root {
+      --bg: #1e1e2e;
+      --card-bg: #2b2b3d;
+      --accent: #ff79c6;
+      --accent-hover: #ff92d0;
+      --text: #f8f8f2;
+      --subtext: #a6adc8;
+      --border: #44475a;
+      --green: #50fa7b;
+      --yellow: #f1fa8c;
+      --blue: #8be9fd;
+      --purple: #bd93f9;
+      --orange: #ffb86c;
+      --red: #ff5555;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 16px;
+      max-width: 650px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    h1, h2, h3 { margin: 0 0 6px 0; }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+    }
+    .counter {
+      background: var(--card-bg);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: bold;
+      border: 1px solid var(--border);
+      font-size: 1.1rem;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .stat {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 4px;
+      text-align: center;
+    }
+    .stat-label { font-size: 0.7rem; color: var(--subtext); text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-val { font-size: 1.3rem; font-weight: bold; }
+    .stat-sub { font-size: 0.65rem; color: var(--subtext); }
+    .hp-bar-wrap { background: var(--bg); border-radius: 6px; height: 10px; overflow: hidden; margin: 8px 0; border: 1px solid var(--border); }
+    .hp-bar { height: 100%; transition: width 0.2s, background 0.2s; }
+    .hp-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .hp-row input {
+      background: var(--bg); color: var(--text); border: 1px solid var(--border);
+      padding: 7px; border-radius: 6px; width: 80px; margin-top: 6px;
+    }
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+    .btn {
+      position: relative;
+      background: var(--border);
+      color: var(--text);
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-top: 6px;
+      margin-right: 6px;
+      transition: all 0.2s;
+    }
+    .btn:hover { background: var(--accent); color: #000; }
+    .btn-small { padding: 2px 8px; font-size: 0.8rem; }
+    .btn-selected { background: var(--green) !important; color: #000 !important; }
+    .btn-used { background: var(--orange) !important; color: #000 !important; }
+    .btn-lock { background: var(--blue); color: #000; }
+    .btn-lock:hover { background: #60d2e8; }
+    .btn-reset { background: var(--red); color: white; }
+    .btn-reset:hover { background: #ff6e6e; }
+    .btn-djinni { background: var(--purple); color: #000; }
+    .btn-djinni:hover { background: #d7bafb; }
+    /* Greyed-out buttons: the reason shows on hover (or as a toast when tapped) */
+    .btn-disabled, .btn-disabled:hover {
+      background: #34354a;
+      color: #6c6f85;
+      cursor: not-allowed;
+    }
+    .btn-disabled[data-reason]:hover::after {
+      content: attr(data-reason);
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 6px);
+      transform: translateX(-50%);
+      width: max-content;
+      max-width: 240px;
+      background: #000;
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: normal;
+      text-align: left;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .note { font-size: 0.85rem; color: var(--subtext); margin-top: 4px; }
+    .attack-box {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 10px;
+    }
+    .reminder {
+      background: rgba(241, 250, 140, 0.08);
+      border: 1px solid var(--yellow);
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 0.85rem;
+    }
+    .status-box {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      background: rgba(80, 250, 123, 0.1);
+      border: 1px solid var(--green);
+    }
+    .saves {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .save {
+      text-align: center;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 2px;
+      font-size: 0.75rem;
+      color: var(--subtext);
+    }
+    .save strong { display: block; font-size: 1rem; color: var(--text); }
+    .save.prof { border-color: var(--green); }
+    .inv-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding: 4px 0;
+      font-size: 0.9rem;
+    }
+    .inv-row:last-child { border-bottom: none; }
+    .inv-count { font-weight: bold; min-width: 24px; text-align: center; display: inline-block; }
+    .inv-row .btn { margin-top: 0; margin-right: 0; margin-left: 4px; }
+    select {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 6px;
+      border-radius: 6px;
+      width: 100%;
+      margin-top: 4px;
+      margin-bottom: 8px;
+    }
+    ul { margin: 4px 0; padding-left: 20px; }
+    li { margin-bottom: 4px; }
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 20px;
+    }
+    #toast {
+      position: fixed;
+      left: 50%;
+      bottom: 20px;
+      transform: translateX(-50%);
+      background: #000;
+      color: var(--text);
+      border: 1px solid var(--accent);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      max-width: 90%;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      z-index: 20;
+    }
+    #toast.show { opacity: 1; }
+    @media (max-width: 480px) {
+      .saves { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      <h1>Timpo Feetfoot</h1>
+      <div class="note">Level 11 Halfling Monk (Way of the Open Hand) · 2024 rules</div>
+    </div>
+    <div class="counter">
+      Focus: <span id="kiCount" style="color:var(--green)">11</span> / 11
+    </div>
+  </div>
+
+  <!-- STATS BAR -->
+  <div class="stats">
+    <div class="stat"><div class="stat-label">AC</div><div class="stat-val">18</div><div class="stat-sub">Unarmored Defense</div></div>
+    <div class="stat"><div class="stat-label">Speed</div><div class="stat-val">50 ft</div><div class="stat-sub">incl. Unarmored Movement</div></div>
+    <div class="stat"><div class="stat-label">Initiative</div><div class="stat-val">+5</div><div class="stat-sub">Dex</div></div>
+    <div class="stat"><div class="stat-label">Focus DC</div><div class="stat-val">15</div><div class="stat-sub">Stun / Open Hand</div></div>
+  </div>
+
+  <!-- HIT POINTS -->
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:baseline;">
+      <div class="card-title" style="margin:0;">❤️ Hit Points</div>
+      <div><strong style="font-size:1.3rem;"><span id="hpCur">101</span></strong> / 101
+        &nbsp;<span style="color:var(--blue);">+<span id="hpTemp">0</span> temp</span></div>
+    </div>
+    <div class="hp-bar-wrap"><div class="hp-bar" id="hpBar"></div></div>
+    <div class="hp-row">
+      <input type="number" id="hpAmount" min="0" placeholder="Amount" aria-label="HP amount">
+      <button class="btn btn-reset" onclick="applyHp('damage')">Damage</button>
+      <button class="btn" style="background:var(--green); color:#000;" onclick="applyHp('heal')">Heal</button>
+      <button class="btn" style="background:var(--blue); color:#000;" onclick="applyHp('temp')">Set Temp HP</button>
+    </div>
+    <div class="note">Damage comes off Temp HP first. Temp HP doesn't stack, so you keep the higher value.</div>
+  </div>
+
+  <!-- STEP 0 -->
+  <div class="card" style="border-left: 4px solid var(--yellow);">
+    <div class="card-title">⚡ Step 0: Combat Start / Initiative</div>
+    <p style="margin: 4px 0; font-size: 0.9rem;">Did you spend Focus Points in a previous fight?</p>
+    <button class="btn" id="btnMetabolism" onclick="useUncannyMetabolism(this)">Use Uncanny Metabolism</button>
+    <div class="note">Restores ALL 11 Focus Points & Heals 1d10 + 11 HP (1/Long Rest)</div>
+  </div>
+
+  <!-- STEP 1: ACTION SELECTION -->
+  <div class="card">
+    <div class="card-title">💥 Step 1: Main Action (Choose One)</div>
+    <button class="btn" id="actAttack" onclick="selectMainAction('attack')">⚔️ Attack Action (2 Attacks)</button>
+    <button class="btn" id="actItem" onclick="selectMainAction('item')">🎒 Item / Magic Action</button>
+    <button class="btn" id="actUtility" onclick="selectMainAction('utility')">🏃 Utility Action (Dash/Dodge/etc.)</button>
+
+    <!-- ATTACK SUB-CHOICES -->
+    <div id="sectionAttack" style="display:none; margin-top: 12px;">
+
+      <!-- ATTACK 1 -->
+      <div class="attack-box">
+        <strong style="color: var(--blue);">🗡️ Attack #1</strong>
+        <label class="note" style="display:block;">Select Weapon:</label>
+        <select id="weapon1" onchange="setWeapon(1, this.value)">
+          <option value="unarmed">Unarmed Strike (+9 to hit | 1d10+5 bludgeoning/force)</option>
+          <option value="staff">Quarterstaff (+9 to hit | 1d10+5 bludgeoning)</option>
+          <option value="whip">Nihor's Whip (+7 to hit | 2d6+3 piercing | Reach 10ft)</option>
+          <option value="crossbow">Light Crossbow (+9 to hit | 1d8+5 piercing)</option>
+        </select>
+
+        <div>
+          <button class="btn" id="stun1" onclick="toggleStunningStrike('atk1', this)">Stunning Strike (1 Focus)</button>
+        </div>
+        <div id="whipEffect1" style="display:none; color:var(--yellow);" class="note">
+          <strong>Whip On-Hit Save (DC 14 Dex):</strong> Choose Grapple/Restrain, Knock Prone, or +4d10 Cold Damage.
+        </div>
+      </div>
+
+      <!-- ATTACK 2 -->
+      <div class="attack-box">
+        <strong style="color: var(--blue);">🗡️ Attack #2 (Extra Attack)</strong>
+        <label class="note" style="display:block;">Select Weapon:</label>
+        <select id="weapon2" onchange="setWeapon(2, this.value)">
+          <option value="unarmed">Unarmed Strike (+9 to hit | 1d10+5 bludgeoning/force)</option>
+          <option value="staff">Quarterstaff (+9 to hit | 1d10+5 bludgeoning)</option>
+          <option value="whip">Nihor's Whip (+7 to hit | 2d6+3 piercing | Reach 10ft)</option>
+          <option value="crossbow">Light Crossbow (+9 to hit | 1d8+5 piercing)</option>
+        </select>
+
+        <div>
+          <button class="btn" id="stun2" onclick="toggleStunningStrike('atk2', this)">Stunning Strike (1 Focus)</button>
+        </div>
+        <div id="whipEffect2" style="display:none; color:var(--yellow);" class="note">
+          <strong>Whip On-Hit Save (DC 14 Dex):</strong> Choose Grapple/Restrain, Knock Prone, or +4d10 Cold Damage.
+        </div>
+      </div>
+
+      <div class="reminder">
+        <strong style="color: var(--yellow);">Every attack:</strong>
+        <ul>
+          <li>🍀 <strong>Lucky:</strong> Rolled a natural 1? Reroll it and use the new roll.</li>
+          <li>🧠 <strong>Concentration Breaker:</strong> If the target is concentrating, it has Disadvantage on its Concentration save.</li>
+          <li>✨ <strong>Empowered Strikes:</strong> Unarmed Strikes can deal Force damage instead of bludgeoning.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ITEM SUB-CHOICES -->
+    <div id="sectionItem" style="display:none; margin-top: 12px;">
+      <ul>
+        <li><strong>Necklace of Fireballs</strong> (<span data-count="beads"></span> beads): Throw a bead up to 60ft, 20ft radius (8d6 Fire, DC 15 Dex save for half). Each extra bead thrown together adds +1d6.
+          <button class="btn btn-small" id="useBeads" onclick="useItem('beads', this, 'Bead thrown: 8d6 Fire, DC 15 Dex save for half.')">Throw Bead</button></li>
+        <li><strong>Ring of Animal Influence</strong> (<span data-count="animal"></span> charges): Spend 1 charge to cast <em>Animal Friendship</em> (DC 13), <em>Fear</em> (DC 13, only Beasts with Int 3 or lower), or <em>Speak with Animals</em>.
+          <button class="btn btn-small" id="useAnimal" onclick="useItem('animal', this, 'Charge used. Save DC 13.')">Use Charge</button>
+          <div class="note">The ring's name is cut off on the sheet ("Ring of Anim…"). This assumes Ring of Animal Influence.</div></li>
+        <li><strong>Ring of Djinni Summoning:</strong> Summon Djinni to serve/fight. <button class="btn btn-djinni btn-small" onclick="toggleDjinniTracker()">Open Djinni Tracker</button></li>
+        <li><strong>Tidal Herbs</strong> (<span data-count="tidalHerbs"></span> left): The effect isn't listed on the sheet, so check with your DM.
+          <button class="btn btn-small" id="useTidalHerbs" onclick="useItem('tidalHerbs', this, 'Tidal Herbs used.')">Use</button></li>
+      </ul>
+      <div class="note">🧪 Under 2024 rules, drinking a potion is a <strong>Bonus Action</strong>. See Step 2.</div>
+    </div>
+
+    <!-- UTILITY SUB-CHOICES -->
+    <div id="sectionUtility" style="display:none; margin-top: 12px;">
+      <ul>
+        <li><strong>Dash:</strong> Gain extra movement equal to your speed (+50 ft) this turn.</li>
+        <li><strong>Disengage:</strong> Movement doesn't provoke opportunity attacks.</li>
+        <li><strong>Dodge:</strong> Attackers have disadvantage against you until next turn.</li>
+        <li><strong>Help / Hide / Search / Use Object</strong></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- STEP 2: BONUS ACTION SELECTION -->
+  <div class="card">
+    <div class="card-title">💨 Step 2: Bonus Action</div>
+    <button class="btn" id="baFlurry" onclick="selectBonusAction('flurry', this)">Flurry of Blows (1 Focus)</button>
+    <button class="btn" id="baMartial" onclick="selectBonusAction('martial', this)">Martial Arts Strike (Free)</button>
+    <button class="btn" id="baPatient" onclick="selectBonusAction('patient', this)">Patient Defense (Free)</button>
+    <button class="btn" id="baPatientFocus" onclick="selectBonusAction('patientFocus', this)">Patient Defense+ (1 Focus)</button>
+    <button class="btn" id="baStep" onclick="selectBonusAction('step', this)">Step of the Wind (Free)</button>
+    <button class="btn" id="baStepFocus" onclick="selectBonusAction('stepFocus', this)">Step of the Wind+ (1 Focus)</button>
+    <button class="btn" id="baWholeness" onclick="selectBonusAction('wholeness', this)">Wholeness of Body (<span id="wholenessUses">3</span>/3)</button>
+    <button class="btn" id="baPotion" onclick="selectBonusAction('potion', this)">🧪 Drink Potion</button>
+
+    <div id="baDetails" style="margin-top: 12px; display:none;"></div>
+
+    <!-- Fleet Step Trigger -->
+    <div id="fleetStepBox" style="display:none; margin-top: 12px; padding: 10px; background: rgba(80, 250, 123, 0.1); border: 1px solid var(--green); border-radius: 8px;">
+      <strong style="color: var(--green);">⚡ Fleet Step Triggered!</strong>
+      <p style="margin: 4px 0; font-size: 0.9rem;">You can <strong>immediately use Step of the Wind</strong> right after this Bonus Action:</p>
+      <button class="btn" id="fleetFree" onclick="selectFleetStep('free', this)">Dash (Free)</button>
+      <button class="btn" id="fleetFocus" onclick="selectFleetStep('focus', this)">Dash + Disengage + Carry Ally (1 Focus)</button>
+    </div>
+  </div>
+
+  <!-- DJINNI COMPANION TRACKER (TOGGLEABLE) -->
+  <div class="card" id="djinniCard" style="display:none; border: 2px solid var(--purple);">
+    <div class="card-title" style="color: var(--purple);">🧞 Djinni Companion Tracker</div>
+    <div style="font-size: 0.9rem; margin-bottom: 8px;">
+      <strong>HP:</strong> 161/161 | <strong>AC:</strong> 17 | <strong>Speed:</strong> 30 ft, Fly 90 ft | <strong>DC:</strong> 17
+    </div>
+    <div class="attack-box">
+      <strong>Djinni Actions:</strong>
+      <ul>
+        <li><strong>Multiattack:</strong> Makes 3 Scimitar attacks (+9 to hit, reach 5ft).</li>
+        <li><strong>Scimitar Hit:</strong> 2d6+5 slashing + 1d6 lightning or thunder damage.</li>
+        <li><strong>Create Whirlwind (Action):</strong> 5ft-radius, 30ft-tall cylinder up to 120ft away. Concentration. Target makes <strong>DC 18 Str save</strong> or is restrained.</li>
+        <li><strong>Innate Spells (DC 17, Charisma +9):</strong>
+          <br>• <i>At Will:</i> Detect Evil/Good, Detect Magic, Thunderwave
+          <br>• <i>3/day:</i> Create Food/Water, Tongues, Wind Walk
+          <br>• <i>1/day:</i> Conjure Elemental (Air), Creation, Gaseous Form, Invisibility, Major Image, Plane Shift
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- MOVEMENT -->
+  <div class="card">
+    <div class="card-title">🦶 Movement</div>
+    <div style="font-size: 0.95rem;">Speed this turn: <strong id="moveSpeed" style="color:var(--green);">50 ft</strong> <span class="note" id="moveNote"></span></div>
+    <ul style="margin-top: 8px;">
+      <li><strong>Unarmored Movement:</strong> Base 30 ft + 20 ft = <strong>50 ft</strong> (no armor or shield).</li>
+      <li><strong>Acrobatic Movement:</strong> Move along vertical surfaces and across liquids on your turn without falling.</li>
+      <li><strong>Halfling Nimbleness:</strong> Move through the space of any creature larger than you.</li>
+      <li><strong>Step of the Wind+:</strong> Jump distance doubled for the turn.</li>
+    </ul>
+  </div>
+
+  <!-- SAVING THROWS & DEFENSES -->
+  <div class="card">
+    <div class="card-title">🛡️ Saving Throws & Defenses</div>
+    <div class="saves">
+      <div class="save prof">STR<strong>+4</strong></div>
+      <div class="save prof">DEX<strong>+9</strong></div>
+      <div class="save">CON<strong>+3</strong></div>
+      <div class="save">INT<strong>−1</strong></div>
+      <div class="save">WIS<strong>+3</strong></div>
+      <div class="save">CHA<strong>−1</strong></div>
+    </div>
+    <ul>
+      <li>🌀 <strong>Evasion:</strong> On a Dex save for half damage, take <strong>0</strong> on a success and <strong>half</strong> on a fail (not while Incapacitated).</li>
+      <li>🧘 <strong>Guarded Mind:</strong> Failed an Int, Wis, or Cha save? Succeed instead (1 per Short/Long Rest).
+        <button class="btn btn-small" id="btnGuardedMind" onclick="toggleGuardedMind()">Use</button></li>
+      <li>🦁 <strong>Brave:</strong> Advantage on saves against being Frightened.</li>
+      <li>🍀 <strong>Lucky:</strong> Rolled a natural 1 on a save? Reroll it and use the new roll.</li>
+    </ul>
+    <div id="dodgeStatus" class="status-box" style="display:none;">
+      🛡️ <strong>Dodging (Patient Defense+):</strong> Until the start of your next turn, attacks against you have Disadvantage and you have <strong>Advantage on Dex saves</strong>.
+    </div>
+  </div>
+
+  <!-- REACTIONS & END TURN -->
+  <div class="card">
+    <div class="card-title">🛡️ Off-Turn Reactions & Turn End</div>
+    <ul>
+      <li>🏹 <strong>Deflect Missiles:</strong> Reduce ranged weapon damage by 1d10 + 16. <button class="btn btn-small" id="btnDeflect" onclick="toggleDeflect(this)">Spend 1 Focus to throw back</button></li>
+      <li>⚔️ <strong>Second Chance:</strong> Force enemy that hit you to reroll attack (1/Rest or Initiative).
+        <button class="btn btn-small" id="btnSecondChance" onclick="toggleSecondChance()">Use</button></li>
+      <li>🧗 <strong>Slow Fall:</strong> Reduce fall damage by 55.</li>
+    </ul>
+    <hr style="border: 0; border-top: 1px solid var(--border); margin: 12px 0;">
+    <button class="btn" onclick="alert('Self Restoration:\nIf you are Charmed, Frightened, or Poisoned, that condition is automatically removed now!')">🔄 End of Turn: Self Restoration</button>
+  </div>
+
+  <!-- CONSUMABLES & CHARGES -->
+  <div class="card">
+    <div class="card-title">🎒 Consumables & Charges</div>
+    <div id="inventory"></div>
+  </div>
+
+  <!-- TURN CONTROL BUTTONS -->
+  <div class="action-row">
+    <button class="btn btn-lock" onclick="endTurnLockIn()">🔒 End Turn & Lock Focus</button>
+    <button class="btn" onclick="newEncounter()">⚔️ New Encounter</button>
+    <button class="btn" onclick="shortRest()">☕ Short Rest</button>
+    <button class="btn btn-reset" onclick="longRest()">🛌 Long Rest</button>
+  </div>
+  <div class="note" style="text-align:center; margin-top: 8px;">
+    New Encounter resets Second Chance · Short Rest also restores Focus & Guarded Mind · Long Rest restores everything except items
+  </div>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const MAX_FOCUS = 11;
+    const MAX_HP = 101;
+    const MAX_WHOLENESS = 3;
+
+    const WEAPONS = {
+      unarmed:  { name: 'Unarmed Strike', monk: true },
+      staff:    { name: 'Quarterstaff', monk: true },
+      whip:     { name: "Nihor's Whip", monk: false },
+      crossbow: { name: 'Light Crossbow', monk: false },
+    };
+
+    const BONUS_ACTIONS = {
+      flurry:       { btn: 'baFlurry', cost: 1 },
+      martial:      { btn: 'baMartial', cost: 0 },
+      patient:      { btn: 'baPatient', cost: 0 },
+      patientFocus: { btn: 'baPatientFocus', cost: 1 },
+      step:         { btn: 'baStep', cost: 0 },
+      stepFocus:    { btn: 'baStepFocus', cost: 1 },
+      wholeness:    { btn: 'baWholeness', cost: 0 },
+      potion:       { btn: 'baPotion', cost: 0 },
+    };
+    // Bonus actions that make Unarmed Strikes (so Stunning Strike can apply)
+    const STRIKE_BAS = ['flurry', 'martial'];
+
+    const STUN_SOURCES = { atk1: 'Attack #1', atk2: 'Attack #2', ba: 'your Bonus Action strike' };
+
+    const POTIONS = [
+      { key: 'healing', name: 'Potion of Healing', heal: '2d4+2' },
+      { key: 'greater', name: 'Potion of Greater Healing', heal: '4d4+4' },
+      { key: 'invisibility', name: 'Potion of Invisibility', effect: 'Invisible for 1 hour. Ends early if you attack, deal damage, or cast a spell.' },
+      { key: 'gaseous', name: 'Potion of Gaseous Form', effect: 'Gaseous Form for 1 hour (no Concentration).' },
+      { key: 'tidalPotion', name: 'Tidal Herb Healing Potion', effect: "Effect isn't listed on the sheet, so check with your DM." },
+    ];
+
+    const INVENTORY = [
+      { key: 'healing', name: 'Potions of Healing' },
+      { key: 'greater', name: 'Greater Healing Potion' },
+      { key: 'invisibility', name: 'Potion of Invisibility' },
+      { key: 'gaseous', name: 'Potion of Gaseous Form' },
+      { key: 'tidalPotion', name: 'Tidal Herb Healing Potion' },
+      { key: 'tidalHerbs', name: 'Tidal Herbs' },
+      { key: 'beads', name: 'Fireball Beads' },
+      { key: 'animal', name: 'Ring of Animal Influence charges' },
+    ];
+
+    // Resources that last between turns
+    let res = {
+      focus: MAX_FOCUS,
+      hp: MAX_HP,
+      temp: 0,
+      metabolismUsed: false,
+      wholeness: MAX_WHOLENESS,
+      secondChanceUsed: false,
+      guardedMindUsed: false,
+      dodging: false,
+    };
+
+    let items = { healing: 3, greater: 1, invisibility: 1, gaseous: 1, tidalPotion: 1, tidalHerbs: 1, beads: 6, animal: 3 };
+
+    // Choices for the current turn; Focus is only spent when the turn is locked in
+    function freshTurn() {
+      return { main: null, weapon: { 1: 'unarmed', 2: 'unarmed' }, stun: null, ba: null, baApplied: false, fleet: null, deflect: false };
+    }
+    let turn = freshTurn();
+
+    const $ = id => document.getElementById(id);
+
+    function focusSpent() {
+      let spent = 0;
+      if (turn.stun) spent += 1;
+      if (turn.ba) spent += BONUS_ACTIONS[turn.ba].cost;
+      if (turn.fleet === 'focus') spent += 1;
+      if (turn.deflect) spent += 1;
+      return spent;
+    }
+
+    function focusLeft() { return res.focus - focusSpent(); }
+
+    function wholenessLeft() { return res.wholeness - (turn.ba === 'wholeness' ? 1 : 0); }
+
+    // ---------- Greyed-out button helpers ----------
+    function setBlocked(el, reason) {
+      if (!el) return;
+      el.classList.toggle('btn-disabled', !!reason);
+      el.setAttribute('aria-disabled', reason ? 'true' : 'false');
+      if (reason) el.dataset.reason = reason;
+      else delete el.dataset.reason;
+    }
+
+    // Returns true (and shows the reason) if the button is greyed out
+    function guard(el) {
+      if (el && el.classList.contains('btn-disabled')) {
+        toast(el.dataset.reason);
+        return true;
+      }
+      return false;
+    }
+
+    let toastTimer;
+    function toast(msg) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    // ---------- Dice & HP ----------
+    function roll(formula) {
+      const m = formula.match(/(\d+)d(\d+)([+-]\d+)?/);
+      let total = m[3] ? parseInt(m[3], 10) : 0;
+      for (let i = 0; i < parseInt(m[1], 10); i++) total += 1 + Math.floor(Math.random() * parseInt(m[2], 10));
+      return total;
+    }
+
+    function askAmount(label, formula) {
+      const v = prompt(`${label}: roll ${formula}.\nEnter your result, or keep the pre-rolled value:`, roll(formula));
+      if (v === null) return null;
+      const n = parseInt(v, 10);
+      return Number.isFinite(n) && n >= 0 ? n : null;
+    }
+
+    function heal(n) { res.hp = Math.min(MAX_HP, res.hp + n); }
+
+    function applyHp(kind) {
+      const input = $('hpAmount');
+      const n = parseInt(input.value, 10);
+      if (!Number.isFinite(n) || n < 0) { toast('Enter an amount first.'); return; }
+      if (kind === 'damage') {
+        const absorbed = Math.min(res.temp, n);
+        res.temp -= absorbed;
+        res.hp = Math.max(0, res.hp - (n - absorbed));
+        if (res.hp === 0) toast('Down to 0 HP! Start death saves.');
+      } else if (kind === 'heal') {
+        heal(n);
+      } else {
+        res.temp = Math.max(res.temp, n);
+      }
+      input.value = '';
+      render();
+    }
+
+    function healFrom(label, formula, el) {
+      if (guard(el)) return;
+      const n = askAmount(label, formula);
+      if (n === null) return;
+      heal(n);
+      turn.baApplied = true;
+      render();
+      toast(`${label}: +${n} HP`);
+    }
+
+    function tempFrom(label, formula, el) {
+      if (guard(el)) return;
+      const n = askAmount(label, formula);
+      if (n === null) return;
+      res.temp = Math.max(res.temp, n);
+      turn.baApplied = true;
+      render();
+      toast(`${label}: ${res.temp} Temp HP`);
+    }
+
+    // ---------- Step 0 ----------
+    function useUncannyMetabolism(el) {
+      if (guard(el)) return;
+      res.metabolismUsed = true;
+      res.focus = MAX_FOCUS;
+      const n = askAmount('Uncanny Metabolism', '1d10+11');
+      if (n !== null) heal(n);
+      render();
+      toast(`Focus Points restored to 11!${n !== null ? ` +${n} HP` : ''}`);
+    }
+
+    // ---------- Step 1 ----------
+    function selectMainAction(type) {
+      turn.main = type;
+      if (type !== 'attack' && (turn.stun === 'atk1' || turn.stun === 'atk2')) turn.stun = null;
+      render();
+    }
+
+    function setWeapon(n, weapon) {
+      turn.weapon[n] = weapon;
+      if (turn.stun === 'atk' + n && !WEAPONS[weapon].monk) turn.stun = null;
+      render();
+    }
+
+    function stunBlockReason(src) {
+      if (turn.stun === src) return null;
+      if (turn.stun) return `Already used on ${STUN_SOURCES[turn.stun]} this turn. Stunning Strike is once per turn.`;
+      if (src !== 'ba') {
+        const w = WEAPONS[turn.weapon[src === 'atk1' ? 1 : 2]];
+        if (!w.monk) return `${w.name} isn't a Monk weapon. Stunning Strike needs a Monk weapon or Unarmed Strike.`;
+      }
+      if (focusLeft() < 1) return 'No Focus Points left.';
+      return null;
+    }
+
+    function toggleStunningStrike(src, el) {
+      if (guard(el)) return;
+      turn.stun = turn.stun === src ? null : src;
+      render();
+    }
+
+    function useItem(key, el, msg) {
+      if (guard(el)) return;
+      items[key] -= 1;
+      render();
+      toast(msg);
+    }
+
+    function toggleDjinniTracker() {
+      const el = $('djinniCard');
+      el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // ---------- Step 2 ----------
+    function baBlockReason(type) {
+      if (turn.ba === type) return null;
+      if (type === 'wholeness' && res.wholeness <= 0) return 'No uses left. Wholeness of Body recharges on a Long Rest (3 uses).';
+      if (type === 'potion' && POTIONS.every(p => items[p.key] <= 0)) return 'No potions left.';
+      const cost = BONUS_ACTIONS[type].cost;
+      if (cost === 0) return null;
+      // Focus that switching would free up from the current bonus action
+      let available = focusLeft() + (turn.ba ? BONUS_ACTIONS[turn.ba].cost : 0) + (turn.fleet === 'focus' ? 1 : 0);
+      if (turn.stun === 'ba' && !STRIKE_BAS.includes(type)) available += 1;
+      return available < cost ? `Not enough Focus Points (costs ${cost}).` : null;
+    }
+
+    function selectBonusAction(type, el) {
+      if (guard(el)) return;
+      turn.ba = turn.ba === type ? null : type;
+      turn.baApplied = false;
+      turn.fleet = null;
+      if (turn.stun === 'ba' && !STRIKE_BAS.includes(turn.ba)) turn.stun = null;
+      render();
+    }
+
+    function selectFleetStep(kind, el) {
+      if (guard(el)) return;
+      turn.fleet = turn.fleet === kind ? null : kind;
+      render();
+    }
+
+    function usePotion(key, el) {
+      if (guard(el)) return;
+      const p = POTIONS.find(x => x.key === key);
+      if (p.heal) {
+        const n = askAmount(p.name, p.heal);
+        if (n === null) return;
+        heal(n);
+        toast(`${p.name}: +${n} HP`);
+      } else {
+        toast(`${p.name}: ${p.effect}`);
+      }
+      items[key] -= 1;
+      turn.baApplied = true;
+      render();
+    }
+
+    function renderBaDetails() {
+      const d = $('baDetails');
+      const applied = turn.baApplied ? 'Already applied this turn.' : null;
+      const stunBtn = `<div><button class="btn" id="stunBa" onclick="toggleStunningStrike('ba', this)">Stunning Strike on a hit (1 Focus)</button></div>`;
+      const concNote = `<div class="note">🧠 Concentration Breaker and 🍀 Lucky apply to these strikes too.</div>`;
+      let html = '';
+      switch (turn.ba) {
+        case 'flurry':
+          html = `<strong>Flurry of Blows:</strong> Make 3 Unarmed Strikes (1d10+5 each).<br><em>Open Hand Technique:</em> Target makes save vs DC 15 (Prone, Push 15ft, or lose reactions).${stunBtn}${concNote}`;
+          break;
+        case 'martial':
+          html = `<strong>Martial Arts Strike:</strong> Make 1 Unarmed Strike (1d10+5 bludgeoning/force).${stunBtn}${concNote}`;
+          break;
+        case 'patient':
+          html = `<strong>Patient Defense (Free):</strong> Take the Disengage action.`;
+          break;
+        case 'patientFocus':
+          html = `<strong>Patient Defense+ (1 Focus):</strong> Take the Disengage <em>and</em> Dodge actions, and gain 2d10 Temporary HP. Until the start of your next turn, attacks against you have Disadvantage and you have <strong>Advantage on Dex saves</strong>.
+            <div><button class="btn" id="btnApplyBa" onclick="tempFrom('Patient Defense', '2d10', this)">Gain Temp HP (2d10)</button></div>`;
+          break;
+        case 'step':
+          html = `<strong>Step of the Wind (Free):</strong> Take the Dash action.`;
+          break;
+        case 'stepFocus':
+          html = `<strong>Step of the Wind+ (1 Focus):</strong> Take the Disengage <em>and</em> Dash actions, and your jump distance is doubled for the turn. You can also carry a willing Large-or-smaller creature within 5 ft with you. Its movement doesn't provoke Opportunity Attacks.`;
+          break;
+        case 'wholeness':
+          html = `<strong>Wholeness of Body:</strong> Heal 1d10 + 3 HP. Uses left after this: ${wholenessLeft()} / ${MAX_WHOLENESS} (per Long Rest).
+            <div><button class="btn" id="btnApplyBa" onclick="healFrom('Wholeness of Body', '1d10+3', this)">Heal (1d10+3)</button></div>`;
+          break;
+        case 'potion':
+          html = `<strong>Drink a Potion</strong> (one per Bonus Action):<div>` +
+            POTIONS.map(p => `<button class="btn" id="potion-${p.key}" onclick="usePotion('${p.key}', this)">${p.name} (${items[p.key]})</button>`).join('') +
+            `</div>`;
+          break;
+      }
+      d.style.display = html ? 'block' : 'none';
+      d.innerHTML = html;
+
+      setBlocked($('stunBa'), stunBlockReason('ba'));
+      if ($('stunBa')) $('stunBa').classList.toggle('btn-selected', turn.stun === 'ba');
+      setBlocked($('btnApplyBa'), applied);
+      POTIONS.forEach(p => setBlocked($('potion-' + p.key),
+        applied ? "You've already drunk a potion with this Bonus Action." : items[p.key] <= 0 ? 'None left.' : null));
+    }
+
+    // ---------- Reactions & defenses ----------
+    function toggleDeflect(el) {
+      if (guard(el)) return;
+      turn.deflect = !turn.deflect;
+      render();
+    }
+
+    function toggleSecondChance() {
+      res.secondChanceUsed = !res.secondChanceUsed;
+      render();
+    }
+
+    function toggleGuardedMind() {
+      res.guardedMindUsed = !res.guardedMindUsed;
+      render();
+    }
+
+    function adjustItem(key, delta) {
+      items[key] = Math.max(0, items[key] + delta);
+      render();
+    }
+
+    function renderInventory() {
+      $('inventory').innerHTML = INVENTORY.map(i => `
+        <div class="inv-row">
+          <span>${i.name}</span>
+          <span>
+            <button class="btn btn-small" onclick="adjustItem('${i.key}', -1)" aria-label="Use one ${i.name}">−</button>
+            <span class="inv-count">${items[i.key]}</span>
+            <button class="btn btn-small" onclick="adjustItem('${i.key}', 1)" aria-label="Add one ${i.name}">+</button>
+          </span>
+        </div>`).join('');
+      document.querySelectorAll('[data-count]').forEach(el => { el.textContent = items[el.dataset.count]; });
+      setBlocked($('useBeads'), items.beads <= 0 ? 'No beads left.' : null);
+      setBlocked($('useAnimal'), items.animal <= 0 ? 'No charges left. Regains 1d3 charges at dawn.' : null);
+      setBlocked($('useTidalHerbs'), items.tidalHerbs <= 0 ? 'None left.' : null);
+    }
+
+    function renderMovement() {
+      const dashes = (turn.ba === 'step' || turn.ba === 'stepFocus' ? 1 : 0) + (turn.fleet ? 1 : 0);
+      const disengaged = ['patient', 'patientFocus', 'stepFocus'].includes(turn.ba) || turn.fleet === 'focus';
+      const jump = turn.ba === 'stepFocus' || turn.fleet === 'focus';
+      $('moveSpeed').textContent = `${50 * (1 + dashes)} ft`;
+      const notes = [];
+      if (dashes) notes.push('Dashing');
+      if (disengaged) notes.push('Disengaged');
+      if (jump) notes.push('jump doubled');
+      notes.push('Dash action adds another +50 ft');
+      $('moveNote').textContent = `(${notes.join(' · ')})`;
+    }
+
+    // ---------- Render ----------
+    function render() {
+      const left = focusLeft();
+      $('kiCount').innerText = left;
+      $('kiCount').style.color = left > 3 ? 'var(--green)' : 'var(--orange)';
+
+      $('hpCur').textContent = res.hp;
+      $('hpTemp').textContent = res.temp;
+      const pct = res.hp / MAX_HP;
+      $('hpBar').style.width = (pct * 100) + '%';
+      $('hpBar').style.background = pct > 0.5 ? 'var(--green)' : pct > 0.25 ? 'var(--yellow)' : 'var(--red)';
+
+      const met = $('btnMetabolism');
+      met.textContent = res.metabolismUsed ? 'Uncanny Metabolism (Used)' : 'Use Uncanny Metabolism';
+      setBlocked(met, res.metabolismUsed ? 'Already used. Recharges when you finish a Long Rest.' : null);
+
+      ['Attack', 'Item', 'Utility'].forEach(t => {
+        const on = turn.main === t.toLowerCase();
+        $('section' + t).style.display = on ? 'block' : 'none';
+        $('act' + t).classList.toggle('btn-selected', on);
+      });
+
+      [1, 2].forEach(n => {
+        $('weapon' + n).value = turn.weapon[n];
+        $('whipEffect' + n).style.display = turn.weapon[n] === 'whip' ? 'block' : 'none';
+        $('stun' + n).classList.toggle('btn-selected', turn.stun === 'atk' + n);
+        setBlocked($('stun' + n), stunBlockReason('atk' + n));
+      });
+
+      $('wholenessUses').textContent = wholenessLeft();
+      Object.entries(BONUS_ACTIONS).forEach(([type, ba]) => {
+        $(ba.btn).classList.toggle('btn-selected', turn.ba === type);
+        setBlocked($(ba.btn), baBlockReason(type));
+      });
+      renderBaDetails();
+
+      // Fleet Step: any bonus action other than Step of the Wind
+      $('fleetStepBox').style.display = turn.ba && !turn.ba.startsWith('step') ? 'block' : 'none';
+      $('fleetFree').classList.toggle('btn-selected', turn.fleet === 'free');
+      $('fleetFocus').classList.toggle('btn-selected', turn.fleet === 'focus');
+      setBlocked($('fleetFocus'), turn.fleet !== 'focus' && left < 1 ? 'No Focus Points left.' : null);
+
+      $('btnDeflect').classList.toggle('btn-selected', turn.deflect);
+      setBlocked($('btnDeflect'), !turn.deflect && left < 1 ? 'No Focus Points left.' : null);
+
+      const sc = $('btnSecondChance');
+      sc.textContent = res.secondChanceUsed ? 'Used (tap to undo)' : 'Use';
+      sc.classList.toggle('btn-used', res.secondChanceUsed);
+      const gm = $('btnGuardedMind');
+      gm.textContent = res.guardedMindUsed ? 'Used (tap to undo)' : 'Use';
+      gm.classList.toggle('btn-used', res.guardedMindUsed);
+
+      $('dodgeStatus').style.display = turn.ba === 'patientFocus' || res.dodging ? 'block' : 'none';
+
+      renderMovement();
+      renderInventory();
+    }
+
+    // ---------- Turn & rest controls ----------
+    function resetTurnUi() {
+      turn = freshTurn();
+      $('djinniCard').style.display = 'none';
+    }
+
+    function endTurnLockIn() {
+      res.focus = focusLeft();
+      if (turn.ba === 'wholeness') res.wholeness -= 1;
+      res.dodging = turn.ba === 'patientFocus';
+      turn = freshTurn();
+      render();
+      alert(`Turn locked in!\nYou have ${res.focus} Focus Point(s) remaining for future turns.`);
+    }
+
+    function newEncounter() {
+      if (!confirm('Start a new encounter? This clears turn choices and resets Second Chance. Focus, HP and long-rest uses stay as they are.')) return;
+      resetTurnUi();
+      res.secondChanceUsed = false;
+      res.dodging = false;
+      render();
+    }
+
+    function shortRest() {
+      if (!confirm('Take a Short Rest? Restores Focus Points to 11, Second Chance and Guarded Mind.')) return;
+      resetTurnUi();
+      res.focus = MAX_FOCUS;
+      res.secondChanceUsed = false;
+      res.guardedMindUsed = false;
+      res.dodging = false;
+      render();
+    }
+
+    function longRest() {
+      if (!confirm('Take a Long Rest? Restores HP, Focus, Wholeness of Body, Uncanny Metabolism, Second Chance and Guarded Mind. Items are not restored.')) return;
+      resetTurnUi();
+      res = { ...res, focus: MAX_FOCUS, hp: MAX_HP, temp: 0, metabolismUsed: false, wholeness: MAX_WHOLENESS,
+              secondChanceUsed: false, guardedMindUsed: false, dodging: false };
+      render();
+    }
+
+    render();
+  </script>
+<script async src="/.netlify/scripts/ar" data-netlify-deploy-id="6ad3eface38a5899cc0cd8c9" data-netlify-site-id="f4e98541-9b1e-4982-ae15-1b33607bee18" data-agent-runner-id="6ad3ecf4ab2a1eb8d6257f91"></script>
+</body>
+</html>
+<script async src="/.netlify/scripts/hud?variant=owner-private" data-nf-variant="owner-private" data-netlify-site-id="f4e98541-9b1e-4982-ae15-1b33607bee18" data-app-host="app.netlify.com"></script>
